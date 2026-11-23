@@ -41,4 +41,3 @@ Thumbs.db
 # Per-machine npm preferences or registry credentials
 .npmrc
 .vercel
-.env*
