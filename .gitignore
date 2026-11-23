@@ -19,8 +19,7 @@ __pycache__/
 .agents/
 .codex/
 .claude/
-.openai/*
-!.openai/hosting.json
+.openai/
 
 # Local source captures, experiments, design references and screenshots
 /outputs/
