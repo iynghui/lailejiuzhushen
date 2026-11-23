@@ -4,6 +4,8 @@
 
 线上地址：https://lailejiuzhushen.vercel.app
 
+国内备用地址（GitHub Pages 镜像，推送 main 自动部署）：https://iynghui.github.io/lailejiuzhushen/
+
 ## 技术栈
 
 Vite + React 的纯静态站点，部署在 Vercel；地图使用高德 JS API，服务端代理注入安全密钥。
