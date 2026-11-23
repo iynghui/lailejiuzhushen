@@ -1,0 +1,44 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+.vite/
+.cache/
+__pycache__/
+*.py[cod]
+*.log
+
+# Local credentials; commit only the empty example
+.env
+.env.*
+!.env.example
+
+# Agent instructions and local tool state
+[Aa][Gg][Ee][Nn][Tt].[Mm][Dd]
+[Aa][Gg][Ee][Nn][Tt][Ss].[Mm][Dd]
+.agents/
+.codex/
+.claude/
+.openai/*
+!.openai/hosting.json
+
+# Local source captures, experiments, design references and screenshots
+/outputs/
+/work/
+/.local/
+/qa/
+/design-reference.*
+/design-qa.md
+
+# Editor, platform and deployment cache
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.wrangler/
+.vercel/
+
+# Per-machine npm preferences or registry credentials
+.npmrc
+.vercel
+.env*

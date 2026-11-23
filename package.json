@@ -1,0 +1,31 @@
+{
+  "name": "lailejiuzhushen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "preview": "vite preview",
+    "test:sites": "node --test tests/sites-worker.test.mjs",
+    "test": "node --test tests/model.test.mjs tests/amap.test.mjs tests/amap-proxy.test.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm test && npm run build && npm run test:sites"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "qrcode": "^1.5.4",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "description": "移动优先的深圳住宅租金参考网站",
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.0.4",
+    "prettier": "3.6.2",
+    "vite": "6.4.6"
+  }
+}
