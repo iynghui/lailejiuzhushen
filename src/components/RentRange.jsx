@@ -1,8 +1,9 @@
 import { money } from '../model.js';
 
-export default function RentRange({ min, max, className }) {
+export default function RentRange({ min, max, className, label }) {
   return (
     <div className={className}>
+      {label && <small className="rent-unit">{label}</small>}
       <small>¥</small>
       <span>{money(min)}</span>
       {min !== max && (

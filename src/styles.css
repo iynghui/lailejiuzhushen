@@ -452,6 +452,14 @@ h1 {
   font-size: 15px;
   margin-left: 4px;
 }
+.row-price .rent-unit {
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+  margin-bottom: 2px;
+}
 .olive {
   color: var(--olive);
 }
@@ -623,6 +631,34 @@ h1 {
   font-size: 13px;
   color: var(--muted);
   line-height: 1.8;
+}
+.metro-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.metro-line svg {
+  color: var(--olive);
+  transform: translateY(1px);
+}
+.metro-line span:first-of-type {
+  color: var(--ink);
+}
+.metro-distance {
+  font-family: var(--numeric);
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+.metro-lines {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
 }
 .region-layout {
   display: grid;

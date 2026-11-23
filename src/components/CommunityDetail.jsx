@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CaretDown, ShareNetwork } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, CaretDown, ShareNetwork, Train } from '@phosphor-icons/react';
 import { money, monthLabel, summarizeCommunityMonths } from '../model.js';
 import CommunityMap from '../CommunityMap.jsx';
 import Bookmark from './Bookmark.jsx';
 import RentRange from './RentRange.jsx';
 import ShareSheet from './ShareSheet.jsx';
+import { nearestMetro } from '../metro.js';
 
 function TransactionDetails({ month, transactions }) {
   return (
@@ -42,6 +43,17 @@ export default function CommunityDetail({ group, onBack, saved, toggle, onToast 
   const [month, setMonth] = useState('');
   const [sort, setSort] = useState('recent');
   const [sharing, setSharing] = useState(false);
+  const [metro, setMetro] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setMetro(null);
+    nearestMetro(group, controller.signal)
+      .then((value) => value && setMetro(value))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [group.key, group.district, group.name]);
+
   const detailLayouts = [...new Set(group.records.map((record) => record.layout))].sort();
   const detailMonths = [...new Set(group.records.map((record) => record.month))].sort().reverse();
   const observations = group.records.filter(
@@ -71,6 +83,14 @@ export default function CommunityDetail({ group, onBack, saved, toggle, onToast 
           <p className="subtle">
             {group.district} · {group.street || group.areas.join(' / ')}
           </p>
+          {metro && (
+            <p className="metro-line">
+              <Train size={14} weight="light" />
+              <span>最近地铁 {metro.name}</span>
+              <span className="metro-distance">{metro.distance}</span>
+              {metro.lines && <span className="metro-lines">{metro.lines}</span>}
+            </p>
+          )}
         </div>
         <div className="detail-actions">
           <button

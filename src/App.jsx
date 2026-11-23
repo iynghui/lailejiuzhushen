@@ -69,7 +69,7 @@ function IndexRent({ community }) {
     `同类参考月租 ¥${money(comparison.reference)}，比较 ${comparison.peerCount} 个小区。`;
   return (
     <div className="row-quote" data-tone={comparison?.tone} title={explanation || undefined}>
-      <RentRange min={community.min} max={community.max} className="row-price" />
+      <RentRange min={community.min} max={community.max} className="row-price" label="月租" />
       {label && (
         <span className="rent-comparison-label">
           {label} {comparisonPercent.format(comparison.variation)}%
@@ -518,6 +518,9 @@ export function App() {
               的其他小区。每个小区取其当月成交区间中点（最低与最高租金的平均值），这些中点的中位数即参考价；偏离参考价超过
               +10% 标红「高于同类」，低于 −10% 标绿「低于同类」，其余标橙「接近同类」。可比小区少于
               5 个时不显示标签。
+            </p>
+            <p>
+              详情页的“最近地铁”取自高德地图，按小区坐标找到最近的地铁站，标注的是地图直线距离，不是步行里程。
             </p>
             <p>部分小区的街道归属仍在补充，选择“全区”或“片区”可以查看更完整的记录。</p>
             <p>收藏保存在当前浏览器，暂不跨设备同步。</p>
