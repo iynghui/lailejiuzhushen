@@ -1,6 +1,6 @@
 const AMAP_KEY = import.meta.env.VITE_AMAP_KEY?.trim();
 const SERVICE = '/_AMapService';
-const CACHE_KEY = 'residential-index:metro:v1';
+const CACHE_KEY = 'residential-index:metro:v2';
 const CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 const TIMEOUT = 8000;
 
