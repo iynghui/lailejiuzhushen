@@ -115,7 +115,7 @@ export async function nearestMetro(community, signal) {
 
   const value = {
     name: cleanStationName(station.name),
-    lines: cleanLines(station.type),
+    lines: cleanLines(station.address || station.type),
     distance: formatKm(Number(station.distance) || 0),
   };
   if (!value.name) return null;
