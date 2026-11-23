@@ -8,6 +8,7 @@ import {
   Check,
   Info,
   SlidersHorizontal,
+  ArrowLeft,
 } from '@phosphor-icons/react';
 import records from './data/records.json';
 import {
@@ -46,6 +47,16 @@ const getHash = () => {
     return '';
   }
 };
+const SAVED_FILTERS = {
+  query: '',
+  district: '',
+  region: [],
+  layout: '',
+  min: '',
+  max: '',
+  month: '',
+};
+
 function readSaved() {
   try {
     const v = JSON.parse(localStorage.getItem('residential-index:saved') || '[]');
@@ -126,7 +137,7 @@ export function App() {
     setToast(exists ? `已取消收藏 ${name}` : `已收藏 ${name}`);
   };
   const filtered = useMemo(
-    () => filterRecords(records, filters, savedOnly, saved),
+    () => filterRecords(records, savedOnly ? SAVED_FILTERS : filters, savedOnly, saved),
     [filters, savedOnly, saved],
   );
   const groups = useMemo(() => groupCommunities(filtered, filters.sort), [filtered, filters.sort]);
@@ -157,10 +168,15 @@ export function App() {
           ? `${money(filters.min)}以上`
           : `${money(filters.max)}以下`
       : '租金';
-  const showSaved = () => {
+  const openSaved = () => {
     back();
-    setSavedOnly((v) => !v);
-    update({ query: '', region: [], district: '', layout: '', min: '', max: '', month: '' });
+    setQueryFocused(false);
+    setSavedOnly(true);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const closeSaved = () => {
+    setSavedOnly(false);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
   return (
     <div className="app-shell">
@@ -183,7 +199,7 @@ export function App() {
         <span className="header-caption">一份关于深圳居住的价格档案</span>
         <button
           className={`icon-button collection-button ${savedOnly ? 'is-saved' : ''}`}
-          onClick={showSaved}
+          onClick={() => (savedOnly ? closeSaved() : openSaved())}
           aria-label={savedOnly ? '返回全部小区' : '我的收藏'}
           aria-pressed={savedOnly}
         >
@@ -246,114 +262,122 @@ export function App() {
             </div>
           </aside>
           <section className="workspace">
-            <div className="filter-sticky">
-              <div className="search-wrapper">
-                <form
-                  className="search-field"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setQueryFocused(false);
-                    searchRef.current.blur();
-                    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  <MagnifyingGlass size={24} weight="light" />
-                  <input
-                    ref={searchRef}
-                    type="search"
-                    aria-label="搜索小区或公寓"
-                    placeholder="搜索小区或公寓"
-                    value={filters.query}
-                    autoComplete="off"
-                    onChange={(e) => update({ query: e.target.value })}
-                    onFocus={() => setQueryFocused(true)}
-                    onBlur={() => setTimeout(() => setQueryFocused(false), 160)}
-                  />
-                  {filters.query && (
-                    <button
-                      className="icon-button"
-                      type="button"
-                      aria-label="清除搜索"
-                      onClick={() => {
-                        update({ query: '' });
-                        searchRef.current.focus();
-                      }}
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                  <button type="submit" className="search-submit desktop-only" aria-label="搜索">
-                    <ArrowRight size={22} />
-                  </button>
-                </form>
-                {queryFocused && suggestions.length > 0 && (
-                  <div className="suggestions" role="listbox" aria-label="匹配的小区">
-                    {suggestions.map((g) => (
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected="false"
-                        key={g.key}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => openDetail(g.key)}
-                      >
-                        <span>{g.name}</span>
-                        <small>
-                          {g.district} · {g.areas.join(' / ')}
-                        </small>
-                        <ArrowRight size={16} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="district-tabs" role="group" aria-label="选择行政区">
-                {Object.keys(DISTRICTS).map((d) => (
-                  <button
-                    className={filters.district === d ? 'active' : ''}
-                    aria-pressed={filters.district === d}
-                    onClick={() => update({ district: d, region: [] })}
-                    key={d}
+            {!savedOnly && (
+              <div className="filter-sticky">
+                <div className="search-wrapper">
+                  <form
+                    className="search-field"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setQueryFocused(false);
+                      searchRef.current.blur();
+                      listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
                   >
-                    {d}
+                    <MagnifyingGlass size={24} weight="light" />
+                    <input
+                      ref={searchRef}
+                      type="search"
+                      aria-label="搜索小区或公寓"
+                      placeholder="搜索小区或公寓"
+                      value={filters.query}
+                      autoComplete="off"
+                      onChange={(e) => update({ query: e.target.value })}
+                      onFocus={() => setQueryFocused(true)}
+                      onBlur={() => setTimeout(() => setQueryFocused(false), 160)}
+                    />
+                    {filters.query && (
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label="清除搜索"
+                        onClick={() => {
+                          update({ query: '' });
+                          searchRef.current.focus();
+                        }}
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                    <button type="submit" className="search-submit desktop-only" aria-label="搜索">
+                      <ArrowRight size={22} />
+                    </button>
+                  </form>
+                  {queryFocused && suggestions.length > 0 && (
+                    <div className="suggestions" role="listbox" aria-label="匹配的小区">
+                      {suggestions.map((g) => (
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          key={g.key}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => openDetail(g.key)}
+                        >
+                          <span>{g.name}</span>
+                          <small>
+                            {g.district} · {g.areas.join(' / ')}
+                          </small>
+                          <ArrowRight size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="district-tabs" role="group" aria-label="选择行政区">
+                  {Object.keys(DISTRICTS).map((d) => (
+                    <button
+                      className={filters.district === d ? 'active' : ''}
+                      aria-pressed={filters.district === d}
+                      onClick={() => update({ district: d, region: [] })}
+                      key={d}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <div className="filter-bar">
+                  <button
+                    className={regions.length ? 'has-value' : ''}
+                    title={regions.map((value) => value.slice(value.indexOf(':') + 1)).join('、')}
+                    onClick={() => setSheet('region')}
+                  >
+                    <span>{regionLabel || '街道 / 片区'}</span>
+                    <CaretDown size={15} />
                   </button>
-                ))}
+                  <button
+                    className={filters.layout ? 'has-value' : ''}
+                    onClick={() => setSheet('layout')}
+                  >
+                    <span className={filters.layout ? 'filter-highlight' : ''}>
+                      {filters.layout || '户型'}
+                    </span>
+                    <CaretDown size={15} />
+                  </button>
+                  <button
+                    className={budgetLabel !== '租金' ? 'has-value' : ''}
+                    onClick={() => setSheet('budget')}
+                    title={budgetLabel}
+                  >
+                    <span>{budgetLabel}</span>
+                    <CaretDown size={15} />
+                  </button>
+                  <button
+                    className={filters.month ? 'has-value' : ''}
+                    onClick={() => setSheet('month')}
+                  >
+                    {filters.month ? `${Number(filters.month.slice(5))}月` : '月份'}
+                    <CaretDown size={15} />
+                  </button>
+                </div>
               </div>
-              <div className="filter-bar">
-                <button
-                  className={regions.length ? 'has-value' : ''}
-                  title={regions.map((value) => value.slice(value.indexOf(':') + 1)).join('、')}
-                  onClick={() => setSheet('region')}
-                >
-                  <span>{regionLabel || '街道 / 片区'}</span>
-                  <CaretDown size={15} />
-                </button>
-                <button
-                  className={filters.layout ? 'has-value' : ''}
-                  onClick={() => setSheet('layout')}
-                >
-                  <span className={filters.layout ? 'filter-highlight' : ''}>
-                    {filters.layout || '户型'}
-                  </span>
-                  <CaretDown size={15} />
-                </button>
-                <button
-                  className={budgetLabel !== '租金' ? 'has-value' : ''}
-                  onClick={() => setSheet('budget')}
-                  title={budgetLabel}
-                >
-                  <span>{budgetLabel}</span>
-                  <CaretDown size={15} />
-                </button>
-                <button
-                  className={filters.month ? 'has-value' : ''}
-                  onClick={() => setSheet('month')}
-                >
-                  {filters.month ? `${Number(filters.month.slice(5))}月` : '月份'}
-                  <CaretDown size={15} />
-                </button>
-              </div>
-            </div>
+            )}
+            {savedOnly && (
+              <button className="back-button saved-back" onClick={closeSaved}>
+                <ArrowLeft size={20} />
+                返回小区索引
+              </button>
+            )}
             <div className="results-heading" ref={listRef}>
               <div>
                 <h2>{savedOnly ? '我的收藏' : '小区索引'}</h2>
