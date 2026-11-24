@@ -103,7 +103,14 @@ test('source dataset has stable IDs and complete core fields', () => {
     assert.equal(records.filter((record) => record.id.startsWith(`${note}-p`)).length, count);
   }
 
-  assert.deepEqual([...new Set(records.map((r) => r.month))].sort(), ['2026-09', '2026-10']);
+  assert.deepEqual([...new Set(records.map((r) => r.month))].sort(), [
+    '2026-04',
+    '2026-05',
+    '2026-06',
+    '2026-07',
+    '2026-09',
+    '2026-10',
+  ]);
   assert.ok(
     records.every(
       (r) =>
@@ -177,7 +184,7 @@ test('monthly rows combine rents for the same community month', () => {
 test('index counts the matching months and quotes one month instead of blending prices', () => {
   const filters = { ...INITIAL, district: '福田区', query: '莲花一村' };
   const [all] = groupCommunities(filterRecords(records, filters));
-  assert.equal(all.monthlyCount, 2);
+  assert.equal(all.monthlyCount, 5);
   assert.deepEqual([all.latestMonth, all.min, all.max], ['2026-10', 2800, 4500]);
   const [september] = groupCommunities(filterRecords(records, { ...filters, month: '2026-09' }));
   assert.equal(september.monthlyCount, 1);
