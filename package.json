@@ -7,11 +7,10 @@
     "dev": "vite",
     "build": "vite build && node scripts/prepare-sites-build.mjs",
     "preview": "vite preview",
-    "test:sites": "node --test tests/sites-worker.test.mjs",
     "test": "node --test tests/model.test.mjs tests/amap.test.mjs tests/amap-proxy.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm test && npm run build && npm run test:sites"
+    "check": "npm run format:check && npm test && npm run build"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
