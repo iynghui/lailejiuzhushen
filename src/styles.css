@@ -1955,3 +1955,50 @@ h1 {
     scroll-behavior: auto !important;
   }
 }
+
+.related {
+  margin-top: 40px;
+}
+
+.related-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.related-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.related-list button {
+  font-family: var(--serif);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  padding: 18px 0;
+  text-align: left;
+}
+
+.related-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.related-name {
+  font-family: var(--serif);
+  font-size: 18px;
+}
+
+.related-meta {
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.related-rent {
+  flex: none;
+}

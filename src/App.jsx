@@ -28,7 +28,6 @@ import {
   monthlyRecordCount,
   totalMonthlyRecords,
   resolveCommunityKey,
-  districtCount,
   months,
   layouts,
   areaCount,
@@ -213,6 +212,7 @@ export function App() {
           key={detail.key}
           group={detail}
           onBack={back}
+          onOpen={openDetail}
           saved={saved.includes(detail.key)}
           toggle={() => toggle(detail.key, detail.name)}
           onToast={setToast}
@@ -486,7 +486,7 @@ export function App() {
           <i> / </i>© {new Date().getFullYear()} Taikonaut
         </span>
         <button onClick={() => setSheet('about')}>
-          关于这份索引
+          数据说明
           <ArrowRight size={14} />
         </button>
       </footer>
@@ -526,25 +526,20 @@ export function App() {
         />
       )}
       {sheet === 'about' && (
-        <Modal title="关于这份索引" onClose={closeSheet}>
+        <Modal title="数据说明" onClose={closeSheet}>
           <div className="about-copy">
             <p>按小区、户型和月份查看深圳的成交租金区间和每一笔成交记录。</p>
             <p>
-              当前收录 {coverageMonths} 的 {money(totalMonthlyRecords)} 条月度记录，覆盖{' '}
-              {districtCount} 个行政区、{areaCount}{' '}
-              个区内片区。行政区以核实的小区地址为准，片区名沿用原表。
+              当前收录 {coverageMonths} 的 {money(totalMonthlyRecords)} 条月度记录。
+            </p>
+            <p>
+              数据来源：小红书博主「江江租房丨温居客」（小红书号 49321262206）公开发布的深圳成交租金笔记，按其笔记内成交表逐条整理。
             </p>
             <p>同一小区同一个月合为一条，按所选户型汇总，租金区间显示最低值至最高值。</p>
             <p>
-              「高于同类 / 接近同类 /
-              低于同类」是跨小区比较：只纳入同行政区、同片区、同月份、同户型，且面积与本小区相差不超过
-              20%
-              的其他小区。每个小区取其当月成交区间中点（最低与最高租金的平均值），这些中点的中位数即参考价；偏离参考价超过
-              +10% 标红「高于同类」，低于 −10% 标绿「低于同类」，其余标橙「接近同类」。可比小区少于
-              5 个时不显示标签。
-            </p>
-            <p>
-              详情页的“最近地铁”取自高德地图，按小区坐标找到最近的地铁站，标注的是地图直线距离，不是步行里程。
+              「高于同类 / 接近同类 / 低于同类」是同类比较：与附近面积相近（相差不超过
+              20%）、同片区、同月份、同户型的小区成交价中位数相比，高出 10% 以上标红「高于同类」，低
+              10% 以上标绿「低于同类」，其余标橙「接近同类」。可比较的小区少于 5 个时不显示标签。
             </p>
             <p>部分小区的街道归属仍在补充，选择“全区”或“片区”可以查看更完整的记录。</p>
             <p>收藏保存在当前浏览器，暂不跨设备同步。</p>

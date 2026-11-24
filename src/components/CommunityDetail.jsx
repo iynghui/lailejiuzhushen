@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CaretDown, ShareNetwork, Train } from '@phosphor-icons/react';
 import { money, monthLabel, summarizeCommunityMonths } from '../model.js';
+import { allCommunities } from '../catalog.js';
+import { similarCommunities } from '../recommendations.js';
 import CommunityMap from '../CommunityMap.jsx';
 import Bookmark from './Bookmark.jsx';
 import RentRange from './RentRange.jsx';
 import ShareSheet from './ShareSheet.jsx';
-import { nearestMetro } from '../metro.js';
+import { metroFor } from '../metro.js';
 
 function TransactionDetails({ month, transactions }) {
   return (
@@ -19,6 +21,7 @@ function TransactionDetails({ month, transactions }) {
           <tr>
             <th scope="col">成交日</th>
             <th scope="col">户型</th>
+            <th scope="col">面积</th>
             <th scope="col">月租</th>
           </tr>
         </thead>
@@ -29,6 +32,7 @@ function TransactionDetails({ month, transactions }) {
                 <time dateTime={record.date}>{record.date.slice(5).replace('-', '.')}</time>
               </td>
               <td>{record.layout}</td>
+              <td>{record.area_sqm ? `${record.area_sqm}㎡` : '—'}</td>
               <td>¥{money(record.rent)}</td>
             </tr>
           ))}
@@ -38,21 +42,12 @@ function TransactionDetails({ month, transactions }) {
   );
 }
 
-export default function CommunityDetail({ group, onBack, saved, toggle, onToast }) {
+export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, onToast }) {
   const [layout, setLayout] = useState('');
   const [month, setMonth] = useState('');
   const [sort, setSort] = useState('recent');
   const [sharing, setSharing] = useState(false);
-  const [metro, setMetro] = useState(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setMetro(null);
-    nearestMetro(group, controller.signal)
-      .then((value) => value && setMetro(value))
-      .catch(() => {});
-    return () => controller.abort();
-  }, [group.key, group.district, group.name]);
+  const metro = metroFor(group);
 
   const detailLayouts = [...new Set(group.records.map((record) => record.layout))].sort();
   const detailMonths = [...new Set(group.records.map((record) => record.month))].sort().reverse();
@@ -69,6 +64,7 @@ export default function CommunityDetail({ group, onBack, saved, toggle, onToast 
     transactions.sort((a, b) => b.date.localeCompare(a.date));
   }
   if (sort === 'low') monthly.sort((a, b) => a.min - b.min || b.month.localeCompare(a.month));
+  const related = similarCommunities(allCommunities, group, 4);
 
   return (
     <main className="detail-page">
@@ -86,9 +82,12 @@ export default function CommunityDetail({ group, onBack, saved, toggle, onToast 
           {metro && (
             <p className="metro-line">
               <Train size={14} weight="light" />
-              <span>最近地铁 {metro.name}</span>
-              <span className="metro-distance">{metro.distance}</span>
+              <span>
+                最近地铁 {metro.name}
+                {metro.exit ? ` ${metro.exit}` : ''}
+              </span>
               {metro.lines && <span className="metro-lines">{metro.lines}</span>}
+              <span className="metro-distance">约 {metro.distance}</span>
             </p>
           )}
         </div>
@@ -181,6 +180,33 @@ export default function CommunityDetail({ group, onBack, saved, toggle, onToast 
             ))}
           </ul>
           <p className="data-caption">租金属原表成交记录，未做调整；同一小区同月按成交区间汇总。</p>
+          {related.length > 0 && (
+            <section className="related" aria-label="您可能还想看">
+              <div className="monthly-heading">
+                <h2>您可能还想看</h2>
+                <span className="result-count">{group.area}</span>
+              </div>
+              <ul className="related-list">
+                {related.map((item) => (
+                  <li key={item.key}>
+                    <button type="button" onClick={() => onOpen(item.key)}>
+                      <span className="related-main">
+                        <span className="related-name">{item.name}</span>
+                        <span className="related-meta">
+                          {item.layouts.slice(0, 2).join(' / ')} · {item.areaMin === item.areaMax ? `${item.areaMin}㎡` : `${item.areaMin}至${item.areaMax}㎡`}
+                          {' · '}
+                          {monthLabel(item.latestMonth)}
+                        </span>
+                      </span>
+                      <span className="related-rent">
+                        <RentRange min={item.min} max={item.max} className="month-rent" />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
       {sharing && <ShareSheet group={group} onClose={() => setSharing(false)} onToast={onToast} />}
