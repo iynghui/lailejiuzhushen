@@ -6,9 +6,9 @@ import {
   ArrowRight,
   X,
   Check,
-  Info,
   SlidersHorizontal,
   ArrowLeft,
+  ArrowUp,
 } from '@phosphor-icons/react';
 import records from './data/records.json';
 import {
@@ -90,6 +90,19 @@ function IndexRent({ community }) {
 }
 
 export function App() {
+  const [showTop, setShowTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 600);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const [filters, setFilters] = useState(INITIAL);
   const [saved, setSaved] = useState(readSaved);
   const [savedOnly, setSavedOnly] = useState(false);
@@ -375,12 +388,12 @@ export function App() {
             {savedOnly && (
               <button className="back-button saved-back" onClick={closeSaved}>
                 <ArrowLeft size={20} />
-                返回小区索引
+                返回小区列表
               </button>
             )}
             <div className="results-heading" ref={listRef}>
               <div>
-                <h2>{savedOnly ? '我的收藏' : '小区索引'}</h2>
+                <h2>{savedOnly ? '我的收藏' : '小区租金档案'}</h2>
                 <span className="result-count">
                   {groups.length} 个小区 · {monthlyRecordCount(groups)} 条月度记录
                 </span>
@@ -390,12 +403,11 @@ export function App() {
                 <CaretDown size={15} />
               </button>
             </div>
-            <p className="tag-legend">
-              <Info size={14} />
-              高于同类 / 接近同类 /
-              低于同类：与本片区、同月、同户型、面积相近的其他小区成交价中位数相比，偏离超过 ±10%
-              才标色。
-            </p>
+            {!savedOnly && (
+              <p className="site-lede">
+                这里记录深圳住宅的真实成交租金，按月汇总。点开一个小区，就能看到它最近几个月的成交价位和户型，给找房的深漂朋友一个参照。
+              </p>
+            )}
             <div
               className="community-list"
               key={JSON.stringify([
@@ -476,7 +488,17 @@ export function App() {
           </section>
         </main>
       )}
-      {selected && !detail && <p className="data-caption">未找到该小区，已显示小区索引。</p>}
+      {selected && !detail && <p className="data-caption">未找到该小区，已显示全部小区。</p>}
+      {!detail && showTop && (
+        <button
+          className="to-top"
+          onClick={scrollToTop}
+          aria-label="回到顶部"
+          title="回到顶部"
+        >
+          <ArrowUp size={18} weight="light" />
+        </button>
+      )}
       <footer className="site-footer">
         <span>
           来了就住深 <i> / </i> SHENZHEN

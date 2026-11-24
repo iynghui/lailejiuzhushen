@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowUpRight, CaretDown, MapPin } from '@phosphor-icons/react';
 import { amapMarkerUrl, amapSearchUrl, loadAMap, searchCommunityPlaces } from './amap.js';
+import { metroCoordsFor } from './metro.js';
 
 const config = {
   key: import.meta.env.VITE_AMAP_KEY?.trim(),
@@ -29,7 +30,17 @@ export default function CommunityMap({ community }) {
     async function locate() {
       try {
         const AMap = await loadAMap(config);
-        const places = await searchCommunityPlaces(AMap, community);
+        const pinned = metroCoordsFor(community);
+        const places = pinned
+          ? [
+              {
+                name: community.name,
+                district: community.district,
+                address: community.street || community.areas?.join(' / ') || '',
+                ...pinned,
+              },
+            ]
+          : await searchCommunityPlaces(AMap, community);
         if (disposed) return;
         if (!places.length) return setState({ status: 'empty' });
         setSelected(places[0]);

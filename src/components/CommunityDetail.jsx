@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CaretDown, ShareNetwork, Train } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, CaretDown, ShareNetwork, Train } from '@phosphor-icons/react';
 import { money, monthLabel, summarizeCommunityMonths } from '../model.js';
 import { allCommunities } from '../catalog.js';
 import { similarCommunities } from '../recommendations.js';
@@ -7,7 +7,7 @@ import CommunityMap from '../CommunityMap.jsx';
 import Bookmark from './Bookmark.jsx';
 import RentRange from './RentRange.jsx';
 import ShareSheet from './ShareSheet.jsx';
-import { metroFor } from '../metro.js';
+import { metroFor, metroWalkUrl } from '../metro.js';
 
 function TransactionDetails({ month, transactions }) {
   return (
@@ -39,6 +39,39 @@ function TransactionDetails({ month, transactions }) {
         </tbody>
       </table>
     </details>
+  );
+}
+
+function MetroLine({ metro, communityName }) {
+  const href = metroWalkUrl(metro, communityName);
+  const content = (
+    <>
+      <Train size={14} weight="light" />
+      <span>
+        最近地铁 {metro.name}
+        {metro.exit ? ` ${metro.exit}` : ''}
+      </span>
+      {metro.lines && <span className="metro-lines">{metro.lines}</span>}
+      <span className="metro-distance">约 {metro.distance}</span>
+      {href && (
+        <span className="metro-go">
+          步行路线
+          <ArrowUpRight size={11} />
+        </span>
+      )}
+    </>
+  );
+  if (!href) return <p className="metro-line">{content}</p>;
+  return (
+    <a
+      className="metro-line metro-line-link"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`在地图查看${communityName}到${metro.name}的步行路线`}
+    >
+      {content}
+    </a>
   );
 }
 
@@ -80,15 +113,7 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
             {group.district} · {group.street || group.areas.join(' / ')}
           </p>
           {metro && (
-            <p className="metro-line">
-              <Train size={14} weight="light" />
-              <span>
-                最近地铁 {metro.name}
-                {metro.exit ? ` ${metro.exit}` : ''}
-              </span>
-              {metro.lines && <span className="metro-lines">{metro.lines}</span>}
-              <span className="metro-distance">约 {metro.distance}</span>
-            </p>
+            <MetroLine metro={metro} communityName={group.name} />
           )}
         </div>
         <div className="detail-actions">
@@ -163,15 +188,13 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
           <ul className="monthly-records" aria-label="月度成交记录">
             {monthly.map((record) => (
               <li className="monthly-record" key={record.month}>
-                <h3>{monthLabel(record.month)}</h3>
-                <dl className="monthly-values">
-                  <div>
-                    <dt>成交月租</dt>
-                    <dd>
-                      <RentRange min={record.min} max={record.max} className="month-rent" />
-                    </dd>
-                  </div>
-                </dl>
+                <div className="monthly-head">
+                  <h3>{monthLabel(record.month)}</h3>
+                  <span className="monthly-label">成交月租</span>
+                </div>
+                <div className="monthly-value">
+                  <RentRange min={record.min} max={record.max} className="month-rent" />
+                </div>
                 <TransactionDetails
                   month={record.month}
                   transactions={transactionsByMonth.get(record.month)}

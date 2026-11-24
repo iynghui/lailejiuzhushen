@@ -354,6 +354,16 @@ h1 {
   margin-top: 7px;
   letter-spacing: 0.04em;
 }
+.site-lede {
+  max-width: none;
+  margin: 18px 0 22px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  text-align: justify;
+}
+
 .tag-legend {
   display: flex;
   align-items: flex-start;
@@ -659,6 +669,30 @@ h1 {
   font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.04em;
+}
+.metro-line-link {
+  color: var(--muted);
+  text-decoration: none;
+  width: fit-content;
+}
+.metro-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.metro-go {
+  font-size: 11px;
+  color: var(--olive);
+  border-bottom: 1px solid rgba(122, 110, 76, 0.32);
+  padding-bottom: 1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.metro-line-link:hover .metro-go {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.metro-go svg {
+  color: inherit;
 }
 .region-layout {
   display: grid;
@@ -1499,32 +1533,34 @@ h1 {
 .monthly-record {
   display: grid;
   grid-template-columns: minmax(145px, 0.8fr) minmax(0, 2.2fr);
-  align-items: baseline;
-  gap: 20px;
+  align-items: start;
+  column-gap: 20px;
+  row-gap: 7px;
   border-bottom: 1px solid var(--line);
   padding: 25px 0;
+}
+
+.monthly-head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(145px, 0.8fr) minmax(0, 2.2fr);
+  column-gap: 20px;
+  align-items: center;
 }
 
 .monthly-record h3 {
   font-size: 22px;
 }
 
-.monthly-values {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-  margin: 0;
-}
-
-.monthly-values dt {
-  margin-bottom: 8px;
+.monthly-label {
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.2;
 }
 
-.monthly-values dd {
-  margin: 0;
+.monthly-value {
+  grid-column: 2;
+  min-width: 0;
 }
 
 .month-rent {
@@ -1574,9 +1610,13 @@ h1 {
     font-size: 19px;
   }
 
-  .monthly-values {
+  .monthly-head {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    row-gap: 6px;
+  }
+
+  .monthly-value {
+    grid-column: 1 / -1;
   }
 
   .month-rent {
@@ -2001,4 +2041,36 @@ h1 {
 
 .related-rent {
   flex: none;
+}
+
+.to-top {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(58, 56, 45, 0.22);
+  border-radius: 999px;
+  background: rgba(246, 244, 236, 0.92);
+  color: var(--ink);
+  box-shadow: 0 6px 18px rgba(40, 38, 30, 0.1);
+  backdrop-filter: blur(6px);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.to-top:hover {
+  transform: translateY(-2px);
+  border-color: rgba(58, 56, 45, 0.45);
+}
+
+@media (max-width: 560px) {
+  .to-top {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    width: 40px;
+    height: 40px;
+  }
 }
