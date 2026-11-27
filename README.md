@@ -2,6 +2,8 @@
 
 深圳住宅租金成交参考站。按行政区、片区、户型、月份查找小区，查看月度成交租金区间和每笔成交明细。
 
+街道与片区支持跨行政区多选，结果按任一已选范围匹配。首页和筛选抽屉展示具体范围名称，可逐项移除；“全区”仅替换当前区的细分选择，“一键清除”移除全部范围。
+
 线上地址：https://lailejiuzhushen.vercel.app
 
 国内备用地址（GitHub Pages 镜像，推送 main 自动部署）：https://iynghui.github.io/lailejiuzhushen/

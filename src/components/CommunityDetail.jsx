@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, CaretDown, ShareNetwork, Train } from '@phosphor-icons/react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  CaretDown,
+  ShareNetwork,
+  Train,
+} from '@phosphor-icons/react';
 import { money, monthLabel, summarizeCommunityMonths } from '../model.js';
 import { allCommunities } from '../catalog.js';
 import { similarCommunities } from '../recommendations.js';
@@ -55,6 +62,21 @@ function MetroLine({ metro, communityName }) {
       <span className="metro-distance">约 {metro.distance}</span>
       {href && (
         <span className="metro-go">
+          <svg
+            className="metro-go-arrow"
+            viewBox="0 0 22 12"
+            width="22"
+            height="12"
+            aria-hidden="true"
+          >
+            <path
+              d="M1 9.4c1.6-4.6 6.4-7.4 13.2-7.6M11.6 0.6l3.4 1.6-2.6 2.9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+          </svg>
           步行路线
           <ArrowUpRight size={11} />
         </span>
@@ -112,9 +134,7 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
           <p className="subtle">
             {group.district} · {group.street || group.areas.join(' / ')}
           </p>
-          {metro && (
-            <MetroLine metro={metro} communityName={group.name} />
-          )}
+          {metro && <MetroLine metro={metro} communityName={group.name} />}
         </div>
         <div className="detail-actions">
           <button
@@ -130,6 +150,7 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
 
       <CommunityMap key={group.key} community={group} />
 
+      <p className="detail-scope">以下展示该小区全部户型与月份，可继续筛选。</p>
       <div className="detail-filters">
         <label>
           户型
@@ -157,8 +178,8 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
           <label>
             排序
             <select aria-label="记录排序" value={sort} onChange={(e) => setSort(e.target.value)}>
-              <option value="recent">按月份从新到旧</option>
-              <option value="low">租金从低到高</option>
+              <option value="recent">最新月份</option>
+              <option value="low">租金由低到高</option>
             </select>
           </label>
         )}
@@ -167,7 +188,7 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
       {monthly.length === 0 ? (
         <div className="empty">
           <h2>这个条件下还没有记录</h2>
-          <p>换一个户型，看看这个小区的其他成交价格。</p>
+          <p>换一个户型或月份，看看这个小区的其他成交价格。</p>
           <button
             className="primary"
             onClick={() => {
@@ -216,7 +237,10 @@ export default function CommunityDetail({ group, onBack, onOpen, saved, toggle, 
                       <span className="related-main">
                         <span className="related-name">{item.name}</span>
                         <span className="related-meta">
-                          {item.layouts.slice(0, 2).join(' / ')} · {item.areaMin === item.areaMax ? `${item.areaMin}㎡` : `${item.areaMin}至${item.areaMax}㎡`}
+                          {item.layouts.slice(0, 2).join(' / ')} ·{' '}
+                          {item.areaMin === item.areaMax
+                            ? `${item.areaMin}㎡`
+                            : `${item.areaMin}至${item.areaMax}㎡`}
                           {' · '}
                           {monthLabel(item.latestMonth)}
                         </span>

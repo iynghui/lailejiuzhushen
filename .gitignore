@@ -40,3 +40,4 @@ Thumbs.db
 # Per-machine npm preferences or registry credentials
 .npmrc
 .vercel
+/HANDOFF.md

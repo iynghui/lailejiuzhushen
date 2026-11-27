@@ -9,6 +9,7 @@ import {
   communityKey,
   communityKeyAliases,
   summarizeCommunityMonths,
+  parseRegionSelection,
 } from '../src/model.js';
 import { indexComparableRents, compareCommunityRent } from '../src/rentComparison.js';
 const records = JSON.parse(readFileSync(new URL('../src/data/records.json', import.meta.url)));
@@ -246,4 +247,40 @@ test('multiple streets and areas form a union without duplicates and stay distri
     filterRecords(records, { ...base, region: '' }),
   );
   assert.equal(filterRecords(records, { ...base, region: ['area:西乡'] }).length, 0);
+});
+
+test('district-qualified ranges combine across districts and preserve other filters', () => {
+  const base = { ...INITIAL, district: '福田区', month: '2026-10' };
+  const selections = ['宝安区|area:西乡', '福田区|area:莲花'];
+  const actual = filterRecords(records, { ...base, region: selections });
+  const expected = records.filter(
+    (r) =>
+      r.month === '2026-10' &&
+      r.layout === '1房' &&
+      ((r.district === '宝安区' && r.area_label === '西乡') ||
+        (r.district === '福田区' && r.area_label === '莲花')),
+  );
+  assert.ok(expected.some((r) => r.district === '宝安区'));
+  assert.ok(expected.some((r) => r.district === '福田区'));
+  assert.deepEqual(actual, expected);
+  assert.equal(new Set(actual.map((r) => r.id)).size, actual.length);
+});
+
+test('whole-district selection coexists with other ranges without leaking same-name areas', () => {
+  const actual = filterRecords(records, {
+    ...INITIAL,
+    district: '宝安区',
+    layout: '',
+    region: ['福田区|area:银湖', '宝安区|all:'],
+  });
+  assert.ok(actual.some((r) => r.district === '福田区'));
+  assert.ok(actual.some((r) => r.district === '宝安区'));
+  assert.ok(
+    actual.every(
+      (r) => r.district === '宝安区' || (r.district === '福田区' && r.area_label === '银湖'),
+    ),
+  );
+  assert.equal(parseRegionSelection('宝安区|street:西乡街道').label, '宝安区 · 西乡街道');
+  assert.equal(parseRegionSelection('area:后海', '南山区').key, '南山区|area:后海');
+  assert.equal(parseRegionSelection('福田区|all:').label, '福田区 · 全区');
 });

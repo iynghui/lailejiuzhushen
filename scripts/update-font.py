@@ -59,7 +59,7 @@ if not (fonts / "OFL.txt").is_file():
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url(/fonts/{name}) format('woff2');
+  src: url(./{name}) format('woff2');
 }}
 """)
 print(f"Font covers all {len(community_chars)} distinct community characters. WOFF2 size: {len(data):,} bytes.")

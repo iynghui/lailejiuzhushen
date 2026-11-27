@@ -1,102 +1,154 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, ArrowRight } from '@phosphor-icons/react';
-import { DISTRICTS, communityKey, money, selectedRegions } from '../model.js';
+import { DISTRICTS, communityKey, money, selectedRegions, parseRegionSelection } from '../model.js';
 import { allCommunities, coverageByDistrict } from '../catalog.js';
 import Modal from './Modal.jsx';
+import RegionSelections from './RegionSelections.jsx';
 
 export function RegionSheet({ filters, onApply, onClose }) {
+  const optionsPanel = useRef();
   const [district, setDistrict] = useState(filters.district);
-  const [regions, setRegions] = useState(() => selectedRegions(filters.region));
-  const [mode, setMode] = useState(
-    selectedRegions(filters.region)[0]?.startsWith('street:') ? 'street' : 'area',
+  const [regions, setRegions] = useState(() =>
+    selectedRegions(filters.region)
+      .map((value) => parseRegionSelection(value, filters.district)?.key)
+      .filter(Boolean),
   );
-  const available = allCommunities.filter((g) => g.district === district);
+  const [mode, setMode] = useState(
+    parseRegionSelection(selectedRegions(filters.region)[0] || '', filters.district)?.type ===
+      'street'
+      ? 'street'
+      : 'area',
+  );
+  const availableCount = useMemo(
+    () => allCommunities.filter((g) => g.district === district).length,
+    [district],
+  );
   const { local, areas } = coverageByDistrict[district];
   const options = mode === 'street' ? DISTRICTS[district].map((x) => `${x}街道`) : areas;
-  const count = (value) =>
-    new Set(
-      local
-        .filter((r) => (mode === 'street' ? r.street === value : r.area_label === value))
-        .map(communityKey),
-    ).size;
+  const counts = useMemo(() => {
+    const grouped = new Map();
+    for (const record of local) {
+      const value = mode === 'street' ? record.street : record.area_label;
+      if (!grouped.has(value)) grouped.set(value, new Set());
+      grouped.get(value).add(communityKey(record));
+    }
+    return grouped;
+  }, [local, mode]);
   return (
-    <Modal title="按区域寻找" onClose={onClose} wide>
-      <div className="region-layout">
-        <div className="district-options" role="group" aria-label="行政区">
-          {Object.keys(DISTRICTS).map((d) => (
-            <button
-              key={d}
-              className={district === d ? 'selected' : ''}
-              onClick={() => {
-                if (d !== district) {
-                  setDistrict(d);
-                  setRegions([]);
-                }
-              }}
-            >
-              {d}
+    <Modal title="按区域寻找" onClose={onClose} wide kind="region">
+      {(dismiss) => (
+        <>
+          <div className="region-body">
+            <div className="region-layout">
+              <div className="district-options" role="group" aria-label="行政区">
+                {Object.keys(DISTRICTS).map((d) => (
+                  <button
+                    key={d}
+                    className={district === d ? 'selected' : ''}
+                    aria-pressed={district === d}
+                    onClick={() => {
+                      if (d !== district) {
+                        setDistrict(d);
+                        optionsPanel.current?.scrollTo({ top: 0, behavior: 'instant' });
+                      }
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <div className="region-options" ref={optionsPanel}>
+                <div className="mode-tabs">
+                  <button
+                    className={mode === 'street' ? 'selected' : ''}
+                    aria-pressed={mode === 'street'}
+                    onClick={() => {
+                      setMode('street');
+                      optionsPanel.current?.scrollTo({ top: 0, behavior: 'instant' });
+                    }}
+                  >
+                    行政街道
+                  </button>
+                  <button
+                    className={mode === 'area' ? 'selected' : ''}
+                    aria-pressed={mode === 'area'}
+                    onClick={() => {
+                      setMode('area');
+                      optionsPanel.current?.scrollTo({ top: 0, behavior: 'instant' });
+                    }}
+                  >
+                    片区
+                  </button>
+                </div>
+                <button
+                  aria-pressed={regions.includes(`${district}|all:`) || !regions.length}
+                  className={`region-option ${regions.includes(`${district}|all:`) || !regions.length ? 'selected' : ''}`}
+                  onClick={() =>
+                    setRegions((current) => [
+                      ...current.filter(
+                        (value) => parseRegionSelection(value)?.district !== district,
+                      ),
+                      `${district}|all:`,
+                    ])
+                  }
+                >
+                  <span>全区</span>
+                  <span>
+                    {availableCount} 个小区{' '}
+                    {(regions.includes(`${district}|all:`) || !regions.length) && (
+                      <Check size={16} />
+                    )}
+                  </span>
+                </button>
+                {options.map((value) => {
+                  const id = `${district}|${mode}:${value}`;
+                  return (
+                    <button
+                      key={id}
+                      className={`region-option ${regions.includes(id) ? 'selected' : ''}`}
+                      aria-pressed={regions.includes(id)}
+                      onClick={() =>
+                        setRegions((current) =>
+                          current.includes(id)
+                            ? current.filter((value) => value !== id)
+                            : [...current.filter((value) => value !== `${district}|all:`), id],
+                        )
+                      }
+                    >
+                      <span>{value}</span>
+                      <span>
+                        {counts.get(value)?.size || 0} {regions.includes(id) && <Check size={16} />}
+                      </span>
+                    </button>
+                  );
+                })}
+                {options.length === 0 && <p className="subtle">这个区域的片区记录还在整理中。</p>}
+              </div>
+            </div>
+            <RegionSelections
+              regions={regions}
+              district={district}
+              onRemove={(id) => setRegions((current) => current.filter((value) => value !== id))}
+            />
+            {!regions.length && <p className="region-selection">当前查看{district}全区</p>}
+            <p className="sheet-note">
+              支持跨区多选，符合任一已选范围即显示。“全区”仅替换当前区的细分范围；一键清除可移除全部选择。
+            </p>
+          </div>
+          <div className="sheet-actions">
+            <button className="text-button" onClick={() => setRegions([])}>
+              一键清除
             </button>
-          ))}
-        </div>
-        <div className="region-options">
-          <div className="mode-tabs">
             <button
-              className={mode === 'street' ? 'selected' : ''}
-              onClick={() => setMode('street')}
+              className="primary"
+              onClick={() => dismiss(() => onApply({ district, region: regions }))}
             >
-              行政街道
-            </button>
-            <button className={mode === 'area' ? 'selected' : ''} onClick={() => setMode('area')}>
-              片区
+              查看结果
+              <ArrowRight size={18} />
             </button>
           </div>
-          <button
-            aria-pressed={!regions.length}
-            className={`region-option ${!regions.length ? 'selected' : ''}`}
-            onClick={() => setRegions([])}
-          >
-            <span>全区</span>
-            <span>
-              {available.length} 个小区 {!regions.length && <Check size={16} />}
-            </span>
-          </button>
-          {options.map((value) => {
-            const id = `${mode}:${value}`;
-            return (
-              <button
-                key={id}
-                className={`region-option ${regions.includes(id) ? 'selected' : ''}`}
-                aria-pressed={regions.includes(id)}
-                onClick={() =>
-                  setRegions((current) =>
-                    current.includes(id)
-                      ? current.filter((value) => value !== id)
-                      : [...current, id],
-                  )
-                }
-              >
-                <span>{value}</span>
-                <span>
-                  {count(value)} {regions.includes(id) && <Check size={16} />}
-                </span>
-              </button>
-            );
-          })}
-          {options.length === 0 && <p className="subtle">这个区域的片区记录还在整理中。</p>}
-        </div>
-      </div>
-      <p className="sheet-note">
-        街道和片区均可多选，符合任一已选范围即显示。选“全区”可清空细分条件。
-      </p>
-      <div className="sheet-actions">
-        <button className="text-button" onClick={() => setRegions([])}>
-          一键清除
-        </button>
-        <button className="primary" onClick={() => onApply({ district, region: regions })}>
-          查看结果
-          <ArrowRight size={18} />
-        </button>
-      </div>
+        </>
+      )}
     </Modal>
   );
 }

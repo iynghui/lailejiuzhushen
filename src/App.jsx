@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   MagnifyingGlass,
   BookmarkSimple,
@@ -9,8 +9,10 @@ import {
   SlidersHorizontal,
   ArrowLeft,
   ArrowUp,
+  Info,
 } from '@phosphor-icons/react';
 import records from './data/records.json';
+import useInteractionMode from './useInteractionMode.js';
 import {
   DISTRICTS,
   INITIAL,
@@ -19,6 +21,7 @@ import {
   monthLabel,
   filterRecords,
   selectedRegions,
+  parseRegionSelection,
   groupCommunities,
 } from './model.js';
 import { compareCommunityRent } from './rentComparison.js';
@@ -35,6 +38,7 @@ import {
 } from './catalog.js';
 import Modal from './components/Modal.jsx';
 import Bookmark from './components/Bookmark.jsx';
+import RegionSelections from './components/RegionSelections.jsx';
 import RentRange from './components/RentRange.jsx';
 import CommunityDetail from './components/CommunityDetail.jsx';
 import { RegionSheet, BudgetSheet, ChoiceSheet } from './components/FilterSheets.jsx';
@@ -71,25 +75,48 @@ const comparisonPercent = new Intl.NumberFormat('zh-CN', {
   signDisplay: 'exceptZero',
 });
 
-function IndexRent({ community }) {
-  const comparison = compareCommunityRent(community, comparableRents);
-  const label = comparison && comparisonLabels[comparison.tone];
-  const explanation =
-    comparison &&
-    `同类参考月租 ¥${money(comparison.reference)}，比较 ${comparison.peerCount} 个小区。`;
+function IndexRent({ community, comparison }) {
   return (
-    <div className="row-quote" data-tone={comparison?.tone} title={explanation || undefined}>
+    <div className="row-quote" data-tone={comparison?.tone}>
       <RentRange min={community.min} max={community.max} className="row-price" label="月租" />
-      {label && (
-        <span className="rent-comparison-label">
-          {label} {comparisonPercent.format(comparison.variation)}%
-        </span>
+    </div>
+  );
+}
+
+function ComparisonRules({ explanation }) {
+  return (
+    <div className="about-copy">
+      {explanation && (
+        <>
+          <p className="comparison-community">{explanation.community.name}</p>
+          <dl className="comparison-facts">
+            <div>
+              <dt>同类参考月租</dt>
+              <dd>¥{money(explanation.comparison.reference)}</dd>
+            </div>
+            <div>
+              <dt>比较样本</dt>
+              <dd>{explanation.comparison.peerCount} 个其他小区</dd>
+            </div>
+            <div>
+              <dt>成交月份</dt>
+              <dd>{monthLabel(explanation.community.latestMonth)}</dd>
+            </div>
+          </dl>
+        </>
       )}
+      <p>比较同片区、同月份、同户型，且面积相差不超过 20% 的其他小区。</p>
+      <p>以本小区租金区间的中点，与其他小区区间中点的中位数比较。参考价和百分比用于辅助判断。</p>
+      <p>
+        高出 10% 以上为红色，低于参考价 10% 以上为绿色，其余为橙色。可比较的其他小区少于 5
+        个时，不显示比较标签。
+      </p>
     </div>
   );
 }
 
 export function App() {
+  useInteractionMode();
   const [showTop, setShowTop] = useState(false);
 
   useEffect(() => {
@@ -110,13 +137,21 @@ export function App() {
   const [selected, setSelected] = useState(getHash);
   const [toast, setToast] = useState('');
   const [queryFocused, setQueryFocused] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [rentExplanation, setRentExplanation] = useState(null);
+  const suggestionId = useId();
+  const indexPosition = useRef({ top: 0, key: null });
+  const previousSelection = useRef(selected);
   const searchRef = useRef();
   const listRef = useRef();
   const regions = selectedRegions(filters.region);
-  const regionLabel =
-    regions.length > 2
-      ? `已选 ${regions.length} 项`
-      : regions.map((value) => value.slice(value.indexOf(':') + 1)).join('、');
+  const chosenRegions = regions
+    .map((value) => parseRegionSelection(value, filters.district))
+    .filter(Boolean);
+  const chosenDistricts = new Set(chosenRegions.map((value) => value.district));
+  const regionLabel = chosenRegions
+    .map((value) => (value.type === 'all' ? `${value.district}全区` : value.name))
+    .join('、');
   const closeSheet = useCallback(() => setSheet(''), []);
   const update = (patch) => setFilters((f) => ({ ...f, ...patch }));
   const apply = (patch) => {
@@ -126,11 +161,24 @@ export function App() {
   useEffect(() => {
     const change = () => {
       setSelected(getHash());
-      window.scrollTo({ top: 0, behavior: 'instant' });
     };
     window.addEventListener('hashchange', change);
     return () => window.removeEventListener('hashchange', change);
   }, []);
+  useLayoutEffect(() => {
+    const wasDetail = Boolean(previousSelection.current);
+    previousSelection.current = selected;
+    if (selected) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    } else if (wasDetail) {
+      const { top, key } = indexPosition.current;
+      const trigger = [...document.querySelectorAll('[data-community-key]')].find(
+        (node) => node.dataset.communityKey === key,
+      );
+      trigger?.focus({ preventScroll: true });
+      window.scrollTo({ top, behavior: 'instant' });
+    }
+  }, [selected]);
   useEffect(() => {
     try {
       localStorage.setItem('residential-index:saved', JSON.stringify(saved));
@@ -160,13 +208,15 @@ export function App() {
         .slice(0, 5)
     : [];
   const openDetail = (key) => {
+    if (!selected) indexPosition.current = { top: window.scrollY, key };
     setQueryFocused(false);
+    setActiveSuggestion(-1);
     location.hash = encodeURIComponent(key);
   };
-  const back = () => {
+  const back = ({ restore = true } = {}) => {
+    if (!restore) indexPosition.current = { top: 0, key: null };
     history.replaceState(null, '', location.pathname + location.search);
     setSelected('');
-    window.scrollTo({ top: 0, behavior: 'instant' });
   };
   const reset = () => {
     setFilters({ ...INITIAL, district: filters.district || INITIAL.district, layout: '' });
@@ -181,7 +231,7 @@ export function App() {
           : `${money(filters.max)}以下`
       : '租金';
   const openSaved = () => {
-    back();
+    back({ restore: false });
     setQueryFocused(false);
     setSavedOnly(true);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -196,12 +246,23 @@ export function App() {
         <button
           className="brand"
           onClick={() => {
-            back();
+            back({ restore: false });
+            window.scrollTo({ top: 0, behavior: 'instant' });
             setSavedOnly(false);
             setFilters(INITIAL);
           }}
           aria-label="来了就住深首页"
         >
+          <span className="brand-mark" aria-hidden="true">
+            <img
+              className="brand-logo"
+              src={`${import.meta.env.BASE_URL}brand/logo.png`}
+              alt=""
+              width="64"
+              height="64"
+              fetchPriority="high"
+            />
+          </span>
           来了就住深
         </button>
         <span className="brand-en">
@@ -234,21 +295,29 @@ export function App() {
         <main className="index-layout">
           <aside className="intro">
             <p className="eyebrow desktop-only">AN INDEX OF PLACES TO LIVE</p>
-            <h1 className={savedOnly ? undefined : 'brand-headline'}>
-              {savedOnly ? (
-                <>
-                  心仪的小区，
-                  <br />
-                  留在这里。
-                </>
-              ) : (
-                <>
-                  来了就是深圳人，
-                  <br />
-                  租房也得有点才。
-                </>
+            <div className="intro-headline">
+              <h1 className={savedOnly ? undefined : 'brand-headline'}>
+                {savedOnly ? (
+                  <>
+                    心仪的小区，
+                    <br />
+                    留在这里。
+                  </>
+                ) : (
+                  <>
+                    来了就是深圳人，
+                    <br />
+                    租房也得有点才。
+                  </>
+                )}
+              </h1>
+              {!savedOnly && (
+                <div className="intro-seal" aria-hidden="true">
+                  <span className="intro-seal-stamp">深</span>
+                  <span className="intro-seal-note">成交实录</span>
+                </div>
               )}
-            </h1>
+            </div>
             <p className="intro-copy">
               {savedOnly ? (
                 <>
@@ -264,6 +333,22 @@ export function App() {
                 </>
               )}
             </p>
+            {!savedOnly && (
+              <div className="intro-facts">
+                <div>
+                  <strong>{money(allCommunities.length)}</strong>
+                  <span>个小区</span>
+                </div>
+                <div>
+                  <strong>{areaCount}</strong>
+                  <span>个片区</span>
+                </div>
+                <div>
+                  <strong>{months[0].replace('-', '.')}</strong>
+                  <span>最新成交月</span>
+                </div>
+              </div>
+            )}
             <div className="intro-foot desktop-only">
               <span>SHENZHEN</span>
               <span>住宅 / 价格 / 生活</span>
@@ -277,11 +362,32 @@ export function App() {
           <section className="workspace">
             {!savedOnly && (
               <div className="filter-sticky">
-                <div className="search-wrapper">
+                <div
+                  className="search-wrapper"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setQueryFocused(false);
+                      setActiveSuggestion(-1);
+                    }
+                  }}
+                >
                   <form
                     className="search-field"
                     onSubmit={(e) => {
                       e.preventDefault();
+                      const exactMatches = suggestions.filter(
+                        (g) => g.name.toLowerCase() === filters.query.trim().toLowerCase(),
+                      );
+                      const match =
+                        queryFocused && activeSuggestion >= 0
+                          ? suggestions[activeSuggestion]
+                          : exactMatches.length === 1
+                            ? exactMatches[0]
+                            : null;
+                      if (match) {
+                        openDetail(match.key);
+                        return;
+                      }
                       setQueryFocused(false);
                       searchRef.current.blur();
                       listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -291,13 +397,48 @@ export function App() {
                     <input
                       ref={searchRef}
                       type="search"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={queryFocused && suggestions.length > 0}
+                      aria-controls={
+                        queryFocused && suggestions.length > 0 ? suggestionId : undefined
+                      }
+                      aria-activedescendant={
+                        queryFocused && activeSuggestion >= 0
+                          ? `${suggestionId}-${activeSuggestion}`
+                          : undefined
+                      }
                       aria-label="搜索小区或公寓"
                       placeholder="搜索小区或公寓"
                       value={filters.query}
                       autoComplete="off"
-                      onChange={(e) => update({ query: e.target.value })}
+                      onChange={(e) => {
+                        update({ query: e.target.value });
+                        setActiveSuggestion(-1);
+                        setQueryFocused(true);
+                      }}
                       onFocus={() => setQueryFocused(true)}
-                      onBlur={() => setTimeout(() => setQueryFocused(false), 160)}
+                      onKeyDown={(event) => {
+                        if (
+                          (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+                          suggestions.length
+                        ) {
+                          event.preventDefault();
+                          setQueryFocused(true);
+                          setActiveSuggestion((current) =>
+                            event.key === 'ArrowDown'
+                              ? (current + 1) % suggestions.length
+                              : current <= 0
+                                ? suggestions.length - 1
+                                : current - 1,
+                          );
+                        }
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          setQueryFocused(false);
+                          setActiveSuggestion(-1);
+                        }
+                      }}
                     />
                     {filters.query && (
                       <button
@@ -317,32 +458,45 @@ export function App() {
                     </button>
                   </form>
                   {queryFocused && suggestions.length > 0 && (
-                    <div className="suggestions" role="listbox" aria-label="匹配的小区">
-                      {suggestions.map((g) => (
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected="false"
-                          key={g.key}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => openDetail(g.key)}
-                        >
-                          <span>{g.name}</span>
-                          <small>
-                            {g.district} · {g.areas.join(' / ')}
-                          </small>
-                          <ArrowRight size={16} />
-                        </button>
-                      ))}
+                    <div className="suggestions">
+                      <p className="suggestions-label">全市小区 · 可直接打开档案</p>
+                      <div id={suggestionId} role="listbox" aria-label="全市匹配的小区">
+                        {suggestions.map((g, index) => (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={activeSuggestion === index}
+                            id={`${suggestionId}-${index}`}
+                            key={g.key}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => openDetail(g.key)}
+                          >
+                            <span>{g.name}</span>
+                            <small>
+                              {g.district} · {g.areas.join(' / ')}
+                            </small>
+                            <ArrowRight size={16} />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
                 <div className="district-tabs" role="group" aria-label="选择行政区">
                   {Object.keys(DISTRICTS).map((d) => (
                     <button
-                      className={filters.district === d ? 'active' : ''}
-                      aria-pressed={filters.district === d}
-                      onClick={() => update({ district: d, region: [] })}
+                      className={
+                        (regions.length ? chosenDistricts.has(d) : filters.district === d)
+                          ? 'active'
+                          : ''
+                      }
+                      aria-pressed={
+                        regions.length ? chosenDistricts.has(d) : filters.district === d
+                      }
+                      onClick={() => {
+                        update({ district: d });
+                        if (regions.length) setSheet('region');
+                      }}
                       key={d}
                     >
                       {d}
@@ -352,7 +506,7 @@ export function App() {
                 <div className="filter-bar">
                   <button
                     className={regions.length ? 'has-value' : ''}
-                    title={regions.map((value) => value.slice(value.indexOf(':') + 1)).join('、')}
+                    title={chosenRegions.map((value) => value.label).join('、')}
                     onClick={() => setSheet('region')}
                   >
                     <span>{regionLabel || '街道 / 片区'}</span>
@@ -385,6 +539,14 @@ export function App() {
                 </div>
               </div>
             )}
+            {!savedOnly && (
+              <RegionSelections
+                regions={regions}
+                district={filters.district}
+                onRemove={(id) => update({ region: regions.filter((value) => value !== id) })}
+                onClear={() => update({ region: [] })}
+              />
+            )}
             {savedOnly && (
               <button className="back-button saved-back" onClick={closeSaved}>
                 <ArrowLeft size={20} />
@@ -403,15 +565,24 @@ export function App() {
                 <CaretDown size={15} />
               </button>
             </div>
-            {!savedOnly && (
-              <p className="site-lede">
-                这里记录深圳住宅的真实成交租金，按月汇总。点开一个小区，就能看到它最近几个月的成交价位和户型，给找房的深漂朋友一个参照。
-              </p>
-            )}
+            <div className="comparison-intro">
+              <span>颜色比较同片区、同月份的相近房源</span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setRentExplanation(null);
+                  setSheet('comparison');
+                }}
+              >
+                比较规则
+                <Info size={14} />
+              </button>
+            </div>
             <div
               className="community-list"
               key={JSON.stringify([
-                filters.district,
+                regions.length ? '' : filters.district,
                 filters.region,
                 filters.layout,
                 filters.month,
@@ -422,42 +593,77 @@ export function App() {
               ])}
               aria-live="polite"
             >
-              {groups.map((g, i) => (
-                <article
-                  className="community-row"
-                  key={g.key}
-                  style={{ '--entry-delay': `${Math.min(i, 7) * 24}ms` }}
-                >
-                  <button
-                    className="community-main"
-                    onClick={() => openDetail(g.key)}
-                    aria-label={`查看${g.name}的成交记录`}
+              {groups.map((g, i) => {
+                const comparison = compareCommunityRent(g, comparableRents);
+                return (
+                  <article
+                    className="community-row"
+                    key={g.key}
+                    style={{ '--entry-delay': `${Math.min(i, 7) * 24}ms` }}
                   >
-                    <span className="index-number">{String(i + 1).padStart(2, '0')}</span>
-                    <div className="community-info">
-                      <h3>{g.name}</h3>
-                      <p>
-                        {g.layouts.length === 1 ? g.layouts[0] : '多种户型'} ·{' '}
-                        {g.areaMin === g.areaMax ? g.areaMin : `${g.areaMin}至${g.areaMax}`}㎡
-                      </p>
-                      <time dateTime={g.latestMonth}>
-                        {g.areas.join(' / ')} · {monthLabel(g.latestMonth)}
-                      </time>
-                    </div>
-                    <IndexRent community={g} />
-                  </button>
-                  <Bookmark
-                    active={saved.includes(g.key)}
-                    name={g.name}
-                    onClick={() => toggle(g.key, g.name)}
-                  />
-                </article>
-              ))}
+                    <button
+                      className="community-main"
+                      data-community-key={g.key}
+                      onClick={() => openDetail(g.key)}
+                      aria-label={`查看${g.name}的成交记录`}
+                    >
+                      <span className="index-number">{String(i + 1).padStart(2, '0')}</span>
+                      <div className="community-info">
+                        <h3>{g.name}</h3>
+                        <p>
+                          {g.layouts.length === 1 ? g.layouts[0] : '多种户型'} ·{' '}
+                          {g.areaMin === g.areaMax ? g.areaMin : `${g.areaMin}至${g.areaMax}`}㎡
+                        </p>
+                        <time dateTime={g.latestMonth}>
+                          {g.areas.join(' / ')} · {monthLabel(g.latestMonth)}
+                        </time>
+                      </div>
+                      <IndexRent community={g} comparison={comparison} />
+                    </button>
+                    {comparison && (
+                      <button
+                        type="button"
+                        className="comparison-trigger"
+                        data-tone={comparison.tone}
+                        aria-label={`${g.name}的租金比较依据`}
+                        onClick={() => {
+                          setRentExplanation({ community: g, comparison });
+                          setSheet('comparison');
+                        }}
+                      >
+                        {comparisonLabels[comparison.tone]}{' '}
+                        {comparisonPercent.format(comparison.variation)}%<Info size={14} />
+                      </button>
+                    )}
+                    <Bookmark
+                      active={saved.includes(g.key)}
+                      name={g.name}
+                      onClick={() => toggle(g.key, g.name)}
+                    />
+                  </article>
+                );
+              })}
             </div>
             {!groups.length && (
               <div className="empty">
                 <SlidersHorizontal size={32} weight="light" />
                 <h2>{savedOnly && saved.length === 0 ? '留住你心仪的小区' : '换个条件，再找找'}</h2>
+                {!savedOnly && suggestions.length > 0 && (
+                  <div className="search-recovery">
+                    <p>当前筛选下没有匹配记录，全市有以下小区：</p>
+                    {suggestions.map((g) => (
+                      <button key={g.key} type="button" onClick={() => openDetail(g.key)}>
+                        <span>
+                          {g.name}
+                          <small>
+                            {g.district} · {g.areas.join(' / ')}
+                          </small>
+                        </span>
+                        <ArrowRight size={18} />
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <p>
                   {savedOnly && saved.length === 0
                     ? '在小区旁点击收藏，下次就能从这里找到它。'
@@ -490,12 +696,7 @@ export function App() {
       )}
       {selected && !detail && <p className="data-caption">未找到该小区，已显示全部小区。</p>}
       {!detail && showTop && (
-        <button
-          className="to-top"
-          onClick={scrollToTop}
-          aria-label="回到顶部"
-          title="回到顶部"
-        >
+        <button className="to-top" onClick={scrollToTop} aria-label="回到顶部" title="回到顶部">
           <ArrowUp size={18} weight="light" />
         </button>
       )}
@@ -547,15 +748,23 @@ export function App() {
           onClose={closeSheet}
         />
       )}
+      {sheet === 'comparison' && (
+        <Modal title="租金比较依据" onClose={closeSheet}>
+          <ComparisonRules explanation={rentExplanation} />
+        </Modal>
+      )}
       {sheet === 'about' && (
         <Modal title="数据说明" onClose={closeSheet}>
           <div className="about-copy">
-            <p>按小区、户型和月份查看深圳的成交租金区间和每一笔成交记录。</p>
+            <p>
+              这里记录深圳住宅的实际成交租金，按小区、户型和月份汇总，也可查看每一笔成交明细，给找房一个参照。
+            </p>
             <p>
               当前收录 {coverageMonths} 的 {money(totalMonthlyRecords)} 条月度记录。
             </p>
             <p>
-              数据来源：小红书博主「江江租房丨温居客」（小红书号 49321262206）公开发布的深圳成交租金笔记，按其笔记内成交表逐条整理。
+              数据来源：小红书博主「江江租房丨温居客」（小红书号
+              49321262206）公开发布的深圳成交租金笔记，按其笔记内成交表逐条整理。
             </p>
             <p>同一小区同一个月合为一条，按所选户型汇总，租金区间显示最低值至最高值。</p>
             <p>

@@ -18,6 +18,7 @@ export default function CommunityMap({ community }) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState({ status: configured ? 'loading' : 'unconfigured' });
   const [selected, setSelected] = useState(null);
+  const [tilesReady, setTilesReady] = useState(false);
   const isReady = state.status === 'ready' && selected;
   const externalUrl = isReady ? amapMarkerUrl(selected) : amapSearchUrl(community);
 
@@ -57,6 +58,7 @@ export default function CommunityMap({ community }) {
 
   useEffect(() => {
     if (!expanded || !isReady || !container.current) return;
+    setTilesReady(false);
     let map;
     let timer;
     let failed = false;
@@ -82,11 +84,15 @@ export default function CommunityMap({ community }) {
       });
       map.addControl(new state.AMap.ToolBar());
       timer = window.setTimeout(fail, 20000);
-      map.on('complete', () => window.clearTimeout(timer));
+      map.on('complete', () => {
+        window.clearTimeout(timer);
+        if (!failed) setTilesReady(true);
+      });
     } catch {
       fail();
     }
     return () => {
+      failed = true;
       window.clearTimeout(timer);
       map?.destroy();
     };
@@ -102,6 +108,7 @@ export default function CommunityMap({ community }) {
         aria-controls={panelId}
         onClick={() => {
           setExpanded((value) => !value);
+          setTilesReady(false);
           setRequested(true);
         }}
       >
@@ -114,12 +121,20 @@ export default function CommunityMap({ community }) {
         <div className="community-map-content" aria-busy={state.status === 'loading'}>
           {isReady ? (
             <>
-              <div
-                ref={container}
-                className="amap-canvas"
-                role="region"
-                aria-label={`${community.name}的高德地图`}
-              />
+              <div className="amap-stage" aria-busy={!tilesReady}>
+                <div
+                  ref={container}
+                  className="amap-canvas"
+                  data-ready={tilesReady}
+                  role="region"
+                  aria-label={`${community.name}的高德地图`}
+                />
+                {!tilesReady && (
+                  <p className="amap-loading" role="status">
+                    正在加载地图…
+                  </p>
+                )}
+              </div>
               <div className="community-map-address">
                 <MapPin size={16} />
                 <p>

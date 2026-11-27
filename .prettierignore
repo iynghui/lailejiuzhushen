@@ -17,3 +17,5 @@ src/data/records.json
 public/fonts/
 package-lock.json
 .env*
+HANDOFF.md
+src/data/metro.json

@@ -54,18 +54,46 @@ export function selectedRegions(region) {
       : [];
 }
 
+// New selections carry district identity; old area:/street: values still work.
+export function parseRegionSelection(value, fallbackDistrict = '') {
+  const separator = value.indexOf('|');
+  const district = separator < 0 ? fallbackDistrict : value.slice(0, separator);
+  const range = separator < 0 ? value : value.slice(separator + 1);
+  const colon = range.indexOf(':');
+  const type = range.slice(0, colon);
+  const name = range.slice(colon + 1);
+  if (
+    colon < 0 ||
+    (district && !DISTRICTS[district]) ||
+    !['area', 'street', 'all'].includes(type) ||
+    (type !== 'all' && !name)
+  )
+    return null;
+  return {
+    district,
+    type,
+    name,
+    key: district ? `${district}|${range}` : range,
+    label: [district, type === 'all' ? '全区' : name].filter(Boolean).join(' · '),
+  };
+}
+
 export function filterRecords(records, f, savedOnly = false, saved = []) {
   const query = f.query.trim().toLowerCase();
-  const regions = selectedRegions(f.region);
+  const regions = selectedRegions(f.region).map((value) => parseRegionSelection(value, f.district));
   return records.filter(
     (r) =>
-      (!f.district || r.district === f.district) &&
-      (!regions.length ||
-        regions.some((region) =>
-          region.startsWith('street:')
-            ? r.street === region.slice(7)
-            : r.area_label === region.slice(5),
-        )) &&
+      (regions.length
+        ? regions.some(
+            (region) =>
+              region &&
+              (!region.district || r.district === region.district) &&
+              (region.type === 'all' ||
+                (region.type === 'street'
+                  ? r.street === region.name
+                  : r.area_label === region.name)),
+          )
+        : !f.district || r.district === f.district) &&
       (!f.layout || r.layout === f.layout) &&
       (f.min === '' || r.rent >= Number(f.min)) &&
       (f.max === '' || r.rent <= Number(f.max)) &&
